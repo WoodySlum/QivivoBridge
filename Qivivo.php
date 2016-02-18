@@ -14,6 +14,7 @@ class Qivivo {
 	private $urlAccount = "http://www.qivivo.com/mon-compte/mes-produits";
 	private $dailyUsage = "http://www.qivivo.com/myQivivo/usage-selection-journee/day";
 	private $singlePageAuth = true;
+	private $enableLog = false;
 	
 	function __construct($login, $password) {
 		$this->qivivoLogin = $login;
@@ -32,6 +33,15 @@ class Qivivo {
 		
 	}
 
+	private function error($code, $message) {
+		die("[".$code."] ".$message.PHP_EOL);
+	}
+
+	private function log($log, $level) {
+		if ($level < 5 && $this->enableLog) {
+			echo $log.PHP_EOL;
+		}
+	}
 
 	function getAccountInfo() {
 		$this->connect();
@@ -145,16 +155,6 @@ class Qivivo {
 			$this->error(701, "Could not load credentials");
 		}
 		$this->log(str_replace(">", "]", str_replace("<", "[", $result)), 5);
-	}
-
-	private function error($code, $message) {
-		die("[".$code."] ".$message.PHP_EOL);
-	}
-
-	private function log($log, $level) {
-		if ($level < 5) {
-			echo $log.PHP_EOL;
-		}
 	}
 
 	private function buildCookie() {

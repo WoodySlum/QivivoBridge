@@ -114,6 +114,10 @@ Set the current thermostat mode
 	string(5) "smart"
 
 
+### Output logs
+
+Set the class var `$enableLog` to `true`
+
 ## License
 
 Copyright (c) 2016, Sebastien MIZRAHI
