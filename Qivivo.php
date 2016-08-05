@@ -12,8 +12,8 @@ class Qivivo {
 	private $urlThermostatStatus = "http://www.qivivo.com/myQivivo/updateRealTime";
 	private $urlThermostatSetTemperature = "http://www.qivivo.com/myQivivo/temps-reel/setTemperature";
 	private $urlAccount = "http://www.qivivo.com/mon-compte/mes-produits";
-	private $dailyUsage = "http://www.qivivo.com/myQivivo/usage-selection-journee/day";
-	private $singlePageAuth = true;
+	private $dailyUsage = "http://www.qivivo.com/myQivivo/synthese/day";
+	private $singlePageAuth = false;
 	private $enableLog = false;
 	
 	function __construct($login, $password) {
@@ -48,7 +48,8 @@ class Qivivo {
 		$ch = curl_init($this->urlAccount);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch,CURLOPT_POSTFIELDS, $fields_string);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Cookie: ".$this->buildCookie()));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Cookie: ".$this->buildCookie(), "Host: www.qivivo.com"));
+		curl_setopt($ch, CURLOPT_REFERER, "http://www.qivivo.com/myQivivo/");
 		$result = curl_exec($ch);
 		
 		preg_match_all("/(<li>Niveau des piles : )(.*)(%<\/li>)/m", $result, $battery);
@@ -113,8 +114,21 @@ class Qivivo {
 			$bCookie = rtrim($bCookie, ";");
 		}
 		
+		// Retrieve csrf token
+		preg_match_all("/( name=\"_csrf_token\" value=\")(.*)(\")/m", $result, $csrfData);
+
+		if (count($csrfData) == 4) {
+			if ($csrfData[2][0] != "") {
+				$csrf = $csrfData[2][0];
+			}
+		}
+
+		$this->log("Qivivo csrf token : ".$csrf, 3);
+
+
 		$ch = curl_init($this->urlLogin);
 		$fields = array(
+			'_csrf_token' => urlencode($csrf),
 			'_username' => urlencode($this->qivivoLogin),
 			'_password' => urlencode($this->qivivoPassword)
 		);
@@ -134,6 +148,7 @@ class Qivivo {
 			'Accept-Language: fr,en-US;q=0.8,en;q=0.6,fr-FR;q=0.4',
 			'Cookie: '.$bCookie
 		));
+		//'Cookie: compatEnergy=gaz; compatTHMarque=delta-dore; cookieCompatibility=true; __utma=; __utmc=; __utmz=utmccn=utmcmd=referral|utmcct=/; _gat=1; PHPSESSID=; PRUM_EPISODES=s=&r=http%3A//www.qivivo.com/login'
 		$this->log(str_replace(">", "]", str_replace("<", "[", @$result)), 5);
 		// get headers too with this line
 		curl_setopt($ch, CURLOPT_HEADER, 1);
@@ -141,9 +156,10 @@ class Qivivo {
 		curl_setopt($ch,CURLOPT_POSTFIELDS, $fields_string);
 
 		$result = curl_exec($ch);
-		
+		// get cookie
+		// multi-cookie variant contributed by @Combuster in comments
 		preg_match_all('/^Set-Cookie:\s*([^;]*)/mi', $result, $matches);
-		
+		// var_dump($result);die;
 
 		$this->credentials = array();
 		foreach($matches[1] as $item) {
@@ -152,7 +168,7 @@ class Qivivo {
 		}
 		$this->log("Credentials retrieved : ".implode(" / ", $this->credentials), 5);
 		if (count($this->credentials) == 0) {
-			$this->error(701, "Could not load credentials");
+			$this->error(701, "Could not load credentials", false);
 		}
 		$this->log(str_replace(">", "]", str_replace("<", "[", $result)), 5);
 	}
